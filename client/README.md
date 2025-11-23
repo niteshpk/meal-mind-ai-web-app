@@ -19,13 +19,15 @@ MealMind AI is an interactive web application that guides users through a simple
 - **Multi-Cuisine Selection**: Choose from 8 popular cuisines (Italian, Mexican, Chinese, Japanese, Indian, Thai, Mediterranean, French)
 - **Smart Ingredient Filtering**: Automatically filters and displays relevant ingredients based on selected cuisines
 - **Categorized Ingredients**: Ingredients organized by categories (Proteins, Vegetables, Herbs & Spices, Pantry, Dairy & Cheese, Condiments & Acids)
-- **AI Recipe Generation**: Generates complete recipes with:
+- **AI Recipe Generation**: Powered by OpenAI GPT models, generates complete recipes with:
   - Recipe name and description
   - Cuisine type and difficulty level
   - Prep time, cook time, and servings
   - Detailed ingredient list with quantities
   - Step-by-step cooking instructions
   - Chef's tips and recommendations
+- **Recipe Caching**: Automatically caches generated recipes in browser storage for instant retrieval
+- **Fallback Support**: Gracefully falls back to template-based generation if AI is unavailable
 
 ### User Experience
 
@@ -76,7 +78,9 @@ MealMind AI Web App/
 │   │   ├── useSelection.ts        # Generic selection hook
 │   │   └── useNavigation.ts       # Navigation hook
 │   ├── services/
-│   │   └── recipe-service.ts      # Recipe generation service
+│   │   ├── recipe-service.ts      # Recipe generation service (main interface)
+│   │   ├── api-service.ts         # Backend API communication service
+│   │   └── recipe-storage.ts      # Recipe caching/storage service
 │   ├── routes/
 │   │   └── index.tsx              # Route configuration
 │   ├── types/
@@ -209,7 +213,22 @@ ErrorBoundary
    pnpm install
    ```
 
-3. **Start development server**
+3. **Start the Backend Server** (Required for AI recipe generation)
+
+   The OpenAI integration is now handled by the backend server. See `server/README.md` for setup instructions.
+   
+   Quick start:
+   ```bash
+   cd ../server
+   pnpm install
+   cp .env.example .env
+   # Edit .env and add OPENAI_API_KEY
+   pnpm dev
+   ```
+   
+   **Note**: If the backend server is not running, the app will fall back to template-based recipe generation.
+
+4. **Start development server**
 
    ```bash
    npm run dev
@@ -217,7 +236,7 @@ ErrorBoundary
    pnpm dev
    ```
 
-4. **Open in browser**
+5. **Open in browser**
    - The app will automatically open at `http://localhost:3000`
    - Or manually navigate to the URL shown in the terminal
 
@@ -402,13 +421,40 @@ The ESLint configuration (`.eslintrc.cjs`) includes:
 
 ---
 
+## 🤖 Backend API Integration
+
+### Architecture
+
+The app uses a **backend server** for AI-powered recipe generation. All OpenAI integration is handled server-side for better security and architecture.
+
+- **Backend Server**: Handles all OpenAI API calls (see `server/README.md`)
+- **Frontend API Service**: Communicates with backend via REST API
+- **Automatic Caching**: Generated recipes are cached in browser localStorage
+- **Smart Fallback**: Falls back to template-based generation if backend is unavailable
+
+### Service Architecture
+
+1. **RecipeService** (`recipe-service.ts`): Main interface that calls backend API
+2. **APIService** (`api-service.ts`): Handles backend API communication
+3. **RecipeStorageService** (`recipe-storage.ts`): Manages client-side caching
+
+### Backend Configuration
+
+The backend server handles:
+- OpenAI API integration
+- TOON format parsing
+- Recipe generation
+- Static data endpoints
+
+See `server/README.md` for backend setup instructions.
+
 ## 🚀 Future Enhancements
 
 ### Potential Features
 
-- **Real AI Integration**: Connect to actual AI API for recipe generation (service layer ready)
+- **Backend API**: Replace OpenAI direct calls with your own backend API
 - **User Accounts**: Save favorite recipes and preferences
-- **Recipe History**: Track previously generated recipes
+- **Recipe History**: Track previously generated recipes with backend sync
 - **Dietary Restrictions**: Filter by dietary preferences (vegan, gluten-free, etc.)
 - **Recipe Ratings**: Allow users to rate and review recipes
 - **Shopping List**: Generate shopping lists from recipes
@@ -417,7 +463,6 @@ The ESLint configuration (`.eslintrc.cjs`) includes:
 - **Image Upload**: Allow users to upload ingredient photos
 - **Recipe Scaling**: Adjust servings and automatically scale ingredients
 - **Error Reporting**: Integrate error boundary with error reporting service
-- **API Integration**: Use environment variables for API configuration
 
 ---
 
@@ -425,15 +470,38 @@ The ESLint configuration (`.eslintrc.cjs`) includes:
 
 ### Recipe Generation Logic
 
-The app uses a `RecipeService` class (`src/services/recipe-service.ts`) for recipe generation. This service:
+The app uses a client-server architecture for recipe generation:
 
-- Selects a recipe template based on the primary cuisine
-- Maps selected ingredients to recipe ingredient list
-- Generates standard instructions and tips
-- Returns a complete recipe object
-- Includes error handling for validation
+1. **RecipeService** (`src/services/recipe-service.ts`): 
+   - Main interface for recipe generation
+   - Calls backend API endpoint `/api/recipes/generate`
+   - Falls back to template-based generation if backend is unavailable
+   - Handles error cases gracefully
 
-**Note**: To integrate with a real AI service, update the `RecipeService.generateRecipe()` method to make an API call to your AI service endpoint. The service is already structured as an async function for easy API integration.
+2. **APIService** (`src/services/api-service.ts`):
+   - Handles all backend API communication
+   - Fetches static data (cuisines, ingredients, templates)
+   - Provides fallback to local constants if API unavailable
+
+3. **RecipeStorageService** (`src/services/recipe-storage.ts`):
+   - Caches generated recipes in browser localStorage
+   - Generates cache keys from cuisine and ingredient combinations
+   - Provides methods to export/import cache data
+   - Can be extended to sync with backend in the future
+
+**Recipe Generation Flow**:
+1. Check cache for existing recipe with same cuisines/ingredients
+2. If cached, return immediately
+3. If not cached, call backend API endpoint
+4. Backend handles OpenAI API call and TOON parsing
+5. Receive Recipe object from backend
+6. Cache the result for future use
+7. Return the recipe
+
+**Fallback Behavior**:
+- If backend server is not running, falls back to templates
+- If API call fails (network, server error, etc.), falls back to templates
+- User experience remains smooth regardless of backend availability
 
 ### Image Handling
 

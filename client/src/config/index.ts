@@ -6,7 +6,7 @@ const env: any = (import.meta as any).env;
 
 export const config = {
   api: {
-    url: env.VITE_API_URL || "https://api.example.com",
+    url: env.VITE_API_URL || "http://localhost:3001",
   },
   app: {
     name: env.VITE_APP_NAME || "MealMind AI",

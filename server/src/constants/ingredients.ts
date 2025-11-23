@@ -1,4 +1,4 @@
-import { Ingredient } from "@/types";
+import { Ingredient } from "../types";
 
 // Map cuisines to their common ingredients
 export const cuisineIngredients: Record<string, string[]> = {
