@@ -15,6 +15,7 @@ Express TypeScript backend server for MealMind AI Web App.
 
 - Node.js (v18 or higher)
 - pnpm (or npm/yarn)
+- MongoDB (local or Atlas)
 - OpenAI API key
 
 ### Installation
@@ -32,11 +33,18 @@ Express TypeScript backend server for MealMind AI Web App.
    cp .env.example .env
    ```
 
-3. **Edit `.env` and add your OpenAI API key**:
+3. **Edit `.env` and configure**:
    ```env
-   OPENAI_API_KEY=sk-your-actual-api-key-here
    PORT=3001
+   MONGODB_URI=mongodb://localhost:27017/mealmind
+   OPENAI_API_KEY=sk-your-actual-api-key-here
    ```
+
+4. **Seed the database** (first time setup):
+   ```bash
+   pnpm seed
+   ```
+   This will migrate all hardcoded data to MongoDB.
 
 ### Running the Server
 
@@ -148,6 +156,9 @@ server/
 ## Environment Variables
 
 - `PORT`: Server port (default: 3001)
+- `MONGODB_URI`: MongoDB connection string (required)
+  - Local: `mongodb://localhost:27017/mealmind`
+  - Atlas: `mongodb+srv://username:password@cluster.mongodb.net/mealmind`
 - `OPENAI_API_KEY`: Your OpenAI API key (required for recipe generation)
 - `OPENAI_MODEL`: OpenAI model to use (default: gpt-4o-mini)
 
@@ -163,10 +174,18 @@ pnpm type-check
 pnpm build
 ```
 
+## Database
+
+- All data is stored in MongoDB
+- Run `pnpm seed` to populate initial data from constants
+- Generated recipes are automatically saved to database
+- See `MIGRATION.md` for detailed migration guide
+
 ## Notes
 
 - The server uses **TOON format** for AI responses to reduce token usage
-- Static data endpoints provide fallback data if frontend can't access constants
+- All endpoints now fetch from MongoDB instead of hardcoded constants
+- Generated recipes are cached in database (checked before generating new ones)
 - API key is required for recipe generation; endpoints will return errors if not configured
 - CORS is enabled for all origins (configure in production)
 

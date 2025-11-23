@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -13,6 +13,7 @@ interface IngredientSelectionProps {
   onToggleIngredient: (ingredientId: string) => void;
   onNext: () => void;
   onBack: () => void;
+  onViewRecipes?: () => void;
 }
 
 export function IngredientSelection({
@@ -21,6 +22,7 @@ export function IngredientSelection({
   onToggleIngredient,
   onNext,
   onBack,
+  onViewRecipes,
 }: IngredientSelectionProps) {
   const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +89,81 @@ export function IngredientSelection({
 
   const categories = Object.keys(groupedIngredients).sort();
 
+  // Check if all ingredients in a category are selected
+  const areAllSelectedInCategory = (category: string): boolean => {
+    const categoryIngredients = groupedIngredients[category];
+    return (
+      categoryIngredients.length > 0 &&
+      categoryIngredients.every((ing) => selectedIngredients.includes(ing.id))
+    );
+  };
+
+  // Check if some (but not all) ingredients in a category are selected
+  const areSomeSelectedInCategory = (category: string): boolean => {
+    const categoryIngredients = groupedIngredients[category];
+    const selectedCount = categoryIngredients.filter((ing) =>
+      selectedIngredients.includes(ing.id)
+    ).length;
+    return selectedCount > 0 && selectedCount < categoryIngredients.length;
+  };
+
+  // Toggle all ingredients in a category
+  const toggleCategory = (category: string) => {
+    const categoryIngredients = groupedIngredients[category];
+    const allSelected = areAllSelectedInCategory(category);
+
+    if (allSelected) {
+      // Deselect all ingredients in this category
+      categoryIngredients.forEach((ing) => {
+        if (selectedIngredients.includes(ing.id)) {
+          onToggleIngredient(ing.id);
+        }
+      });
+    } else {
+      // Select all ingredients in this category
+      categoryIngredients.forEach((ing) => {
+        if (!selectedIngredients.includes(ing.id)) {
+          onToggleIngredient(ing.id);
+        }
+      });
+    }
+  };
+
+  // Category header component with select all checkbox
+  const CategoryHeader = ({ category }: { category: string }) => {
+    const allSelected = areAllSelectedInCategory(category);
+    const someSelected = areSomeSelectedInCategory(category);
+    const checkboxRef = useRef<HTMLButtonElement>(null);
+
+    // Set indeterminate state on the underlying input
+    useEffect(() => {
+      if (checkboxRef.current) {
+        const input = checkboxRef.current.querySelector('input[type="checkbox"]') as HTMLInputElement;
+        if (input) {
+          input.indeterminate = someSelected && !allSelected;
+        }
+      }
+    }, [allSelected, someSelected]);
+
+    return (
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-primary">{category}</h3>
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => toggleCategory(category)}
+        >
+          <Checkbox
+            ref={checkboxRef}
+            checked={allSelected}
+            onCheckedChange={() => toggleCategory(category)}
+            className="pointer-events-none"
+          />
+          <span className="text-sm text-muted-foreground">Select All</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="py-12 md:py-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -105,7 +182,7 @@ export function IngredientSelection({
         </div>
 
         {/* Selected Counter */}
-        <div className="max-w-4xl mx-auto mb-8 flex items-center justify-center gap-2">
+        <div className="max-w-4xl mx-auto mb-8 flex items-center justify-center gap-4 flex-wrap">
           <div className="bg-accent-lighter border-accent-light border px-4 py-2 rounded-full">
             <span className="text-sm text-accent">
               {selectedIngredients.length}{" "}
@@ -113,6 +190,16 @@ export function IngredientSelection({
               selected
             </span>
           </div>
+          {selectedIngredients.length > 0 && onViewRecipes && (
+            <Button
+              variant="outline"
+              onClick={onViewRecipes}
+              disabled={loading}
+              className="border-blue-300 text-blue-600 hover:bg-blue-50"
+            >
+              Browse Existing Recipes
+            </Button>
+          )}
         </div>
 
         {/* Loading State */}
@@ -147,8 +234,8 @@ export function IngredientSelection({
           <div className="max-w-4xl mx-auto space-y-8 mb-12">
             {categories.map((category) => (
               <Card key={category} className="p-6">
-                <h3 className="mb-6 text-primary">{category}</h3>
-                <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <CategoryHeader category={category} />
+                  <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {groupedIngredients[category].map((ingredient) => {
                     const isSelected = selectedIngredients.includes(
                       ingredient.id
@@ -181,7 +268,7 @@ export function IngredientSelection({
                       </div>
                     );
                   })}
-                </div>
+                  </div>
               </Card>
             ))}
           </div>
@@ -193,15 +280,27 @@ export function IngredientSelection({
             <ArrowLeft className="mr-2 h-5 w-5" />
             Back to Cuisines
           </Button>
-          <Button
-            size="lg"
-            disabled={selectedIngredients.length === 0 || loading}
-            onClick={onNext}
-            className="bg-accent hover:bg-accent-light"
-          >
-            Generate Recipe
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex gap-3">
+            {selectedIngredients.length > 0 && onViewRecipes && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={onViewRecipes}
+                disabled={loading}
+              >
+                View Existing Recipes
+              </Button>
+            )}
+            <Button
+              size="lg"
+              disabled={selectedIngredients.length === 0 || loading}
+              onClick={onNext}
+              className="bg-accent hover:bg-accent-light"
+            >
+              Generate Recipe
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

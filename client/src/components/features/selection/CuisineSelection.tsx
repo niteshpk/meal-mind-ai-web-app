@@ -99,7 +99,9 @@ export function CuisineSelection({
                 <Card
                   key={cuisine.id}
                   className={`overflow-hidden cursor-pointer transition-all hover:shadow-lg ${
-                    isSelected ? "ring-2 ring-primary" : ""
+                    isSelected
+                      ? "ring-2 ring-primary border-primary shadow-lg"
+                      : ""
                   }`}
                   onClick={() => onToggleCuisine(cuisine.id)}
                 >

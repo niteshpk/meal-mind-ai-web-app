@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { Recipe, FlattenedRecipe } from "../types";
-import { cuisineNames } from "../constants/recipe-templates";
-import { allIngredients } from "../constants/ingredients";
+import { CuisineNames } from "../models/DefaultData";
+import { Ingredient } from "../models/Ingredient";
 
 export class AIService {
   private client: OpenAI;
@@ -18,18 +18,23 @@ export class AIService {
   /**
    * Format ingredient IDs to readable names
    */
-  private formatIngredients(ingredientIds: string[]): string[] {
-    const ingredientMap = new Map(
-      allIngredients.map((ing) => [ing.id, ing.name])
-    );
+  private async formatIngredients(ingredientIds: string[]): Promise<string[]> {
+    const ingredients = await Ingredient.find({ id: { $in: ingredientIds } });
+    const ingredientMap = new Map(ingredients.map((ing) => [ing.id, ing.name]));
     return ingredientIds.map((id) => ingredientMap.get(id) || id);
   }
 
   /**
    * Format cuisine IDs to readable names
    */
-  private formatCuisines(cuisineIds: string[]): string[] {
-    return cuisineIds.map((id) => cuisineNames[id] || id);
+  private async formatCuisines(cuisineIds: string[]): Promise<string[]> {
+    const cuisineNamesDocs = await CuisineNames.find({
+      cuisineId: { $in: cuisineIds },
+    });
+    const cuisineNamesMap = new Map(
+      cuisineNamesDocs.map((cn) => [cn.cuisineId, cn.name])
+    );
+    return cuisineIds.map((id) => cuisineNamesMap.get(id) || id);
   }
 
   /**
@@ -159,10 +164,10 @@ export class AIService {
   /**
    * Parse AI response into Recipe object
    */
-  private parseAIResponse(
+  private async parseAIResponse(
     response: string,
     cuisines: string[]
-  ): Recipe {
+  ): Promise<Recipe> {
     try {
       // Try to parse as TOON format first (preferred)
       let flatRecipe: FlattenedRecipe | null = null;
@@ -177,10 +182,11 @@ export class AIService {
             flatRecipe = recipeData as FlattenedRecipe;
           } else {
             // Convert nested JSON to flattened
+            const formattedCuisines = await this.formatCuisines(cuisines);
             flatRecipe = {
               name: recipeData.name || "AI-Generated Recipe",
               description: recipeData.description || "A delicious recipe created by AI",
-              cuisine: recipeData.cuisine || this.formatCuisines(cuisines)[0] || "Fusion",
+              cuisine: recipeData.cuisine || formattedCuisines[0] || "Fusion",
               prepTime: recipeData.prepTime?.toString() || "15",
               cookTime: recipeData.cookTime?.toString() || "20",
               servings: recipeData.servings || 4,
@@ -241,7 +247,8 @@ export class AIService {
    */
   private createRecipePrompt(
     cuisines: string[],
-    ingredients: string[]
+    ingredients: string[],
+    avoidSimilarTo?: string[]
   ): string {
     const cuisineText =
       cuisines.length === 1
@@ -249,7 +256,12 @@ export class AIService {
         : `a fusion of ${cuisines.join(" and ")}`;
     const ingredientsText = ingredients.join(", ");
 
-    return `Create a detailed recipe for a ${cuisineText} dish using the following ingredients: ${ingredientsText}.
+    let uniquenessNote = "";
+    if (avoidSimilarTo && avoidSimilarTo.length > 0) {
+      uniquenessNote = `\n\nCRITICAL: Generate a COMPLETELY DIFFERENT and UNIQUE recipe. Avoid creating recipes similar to these existing ones: ${avoidSimilarTo.join(", ")}. Create a new variation with a different name, different cooking method, and different flavor profile.`;
+    }
+
+    return `Create a detailed recipe for a ${cuisineText} dish using the following ingredients: ${ingredientsText}.${uniquenessNote}
 
 Please provide a complete recipe in TOON format (Token-Oriented Object Notation) with the following flattened structure:
 name: Recipe name
@@ -284,16 +296,21 @@ Important:
 - Provide clear, step-by-step instructions
 - Include helpful cooking tips
 - Ensure amounts are realistic and practical
-- Make the recipe name creative and appealing`;
+- Make the recipe name creative and appealing${avoidSimilarTo && avoidSimilarTo.length > 0 ? "\n- Ensure the recipe name and approach are completely different from the existing recipes mentioned above" : ""}`;
   }
 
   /**
    * Generate recipe using OpenAI API
+   * @param cuisines - Array of cuisine IDs
+   * @param ingredients - Array of ingredient IDs
+   * @param model - OpenAI model to use
+   * @param avoidSimilarTo - Array of recipe names to avoid (for uniqueness)
    */
   async generateRecipe(
     cuisines: string[],
     ingredients: string[],
-    model: string = "gpt-4o-mini"
+    model: string = "gpt-4o-mini",
+    avoidSimilarTo?: string[]
   ): Promise<Recipe> {
     // Validate inputs
     if (cuisines.length === 0) {
@@ -304,12 +321,16 @@ Important:
       throw new Error("At least one ingredient must be selected");
     }
 
-    // Format inputs for AI
-    const cuisineNames = this.formatCuisines(cuisines);
-    const ingredientNames = this.formatIngredients(ingredients);
+      // Format inputs for AI
+      const cuisineNames = await this.formatCuisines(cuisines);
+      const ingredientNames = await this.formatIngredients(ingredients);
 
-    // Create prompt
-    const prompt = this.createRecipePrompt(cuisineNames, ingredientNames);
+      // Create prompt
+      const prompt = this.createRecipePrompt(
+        cuisineNames,
+        ingredientNames,
+        avoidSimilarTo
+      );
 
     // Call OpenAI API
     const completion = await this.client.chat.completions.create({
@@ -329,15 +350,15 @@ Important:
       max_tokens: 2000,
     });
 
-    const responseContent =
-      completion.choices[0]?.message?.content || "";
+      const responseContent =
+        completion.choices[0]?.message?.content || "";
 
-    if (!responseContent) {
-      throw new Error("Empty response from OpenAI");
-    }
+      if (!responseContent) {
+        throw new Error("Empty response from OpenAI");
+      }
 
-    // Parse response
-    return this.parseAIResponse(responseContent, cuisines);
+      // Parse response
+      return await this.parseAIResponse(responseContent, cuisines);
   }
 }
 

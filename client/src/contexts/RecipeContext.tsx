@@ -7,10 +7,13 @@ interface RecipeContextType {
   selectedCuisines: string[];
   selectedIngredients: string[];
   recipe: Recipe | null;
+  isCached: boolean;
   setCurrentScreen: (screen: Screen) => void;
+  setRecipe: (recipe: Recipe | null) => void;
   toggleCuisine: (cuisineId: string) => void;
   toggleIngredient: (ingredientId: string) => void;
-  generateRecipe: () => Promise<void>;
+  generateRecipe: (forceRegenerate?: boolean) => Promise<void>;
+  regenerateRecipe: () => Promise<void>;
   reset: () => void;
 }
 
@@ -21,6 +24,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [isCached, setIsCached] = useState<boolean>(false);
 
   // Handle cuisine toggle
   const toggleCuisine = (cuisineId: string) => {
@@ -41,16 +45,22 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
   };
 
   // Generate recipe
-  const generateRecipe = async () => {
+  const generateRecipe = async (forceRegenerate: boolean = false) => {
     setCurrentScreen("loading");
-    // Simulate AI processing with Promise-based delay
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    const generatedRecipe = await RecipeService.generateRecipe(
+    const result = await RecipeService.generateRecipe(
       selectedCuisines,
-      selectedIngredients
+      selectedIngredients,
+      true,
+      forceRegenerate
     );
-    setRecipe(generatedRecipe);
+    setRecipe(result.recipe);
+    setIsCached(result.cached);
     setCurrentScreen("recipe");
+  };
+
+  // Regenerate recipe with same ingredients
+  const regenerateRecipe = async () => {
+    await generateRecipe(true);
   };
 
   // Reset all state
@@ -59,6 +69,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     setSelectedCuisines([]);
     setSelectedIngredients([]);
     setRecipe(null);
+    setIsCached(false);
   };
 
   return (
@@ -68,10 +79,13 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
         selectedCuisines,
         selectedIngredients,
         recipe,
+        isCached,
         setCurrentScreen,
+        setRecipe,
         toggleCuisine,
         toggleIngredient,
         generateRecipe,
+        regenerateRecipe,
         reset,
       }}
     >

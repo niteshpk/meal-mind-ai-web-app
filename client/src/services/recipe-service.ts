@@ -17,14 +17,16 @@ export class RecipeService {
    * @param cuisines - Array of selected cuisine IDs
    * @param ingredients - Array of selected ingredient IDs
    * @param useAI - Whether to use AI generation (default: true)
-   * @returns Promise resolving to a Recipe object
+   * @param forceRegenerate - Force regenerate even if cached recipe exists (default: false)
+   * @returns Promise resolving to a Recipe object and cached status
    * @throws RecipeGenerationError if generation fails
    */
   static async generateRecipe(
     cuisines: string[],
     ingredients: string[],
-    useAI: boolean = true
-  ): Promise<Recipe> {
+    useAI: boolean = true,
+    forceRegenerate: boolean = false
+  ): Promise<{ recipe: Recipe; cached: boolean }> {
     try {
       if (cuisines.length === 0) {
         throw new RecipeGenerationError(
@@ -48,7 +50,7 @@ export class RecipeService {
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ cuisines, ingredients }),
+              body: JSON.stringify({ cuisines, ingredients, forceRegenerate }),
             }
           );
 
@@ -62,7 +64,10 @@ export class RecipeService {
 
           const data = await response.json();
           if (data.success && data.recipe) {
-            return data.recipe;
+            return {
+              recipe: data.recipe,
+              cached: data.cached || false,
+            };
           } else {
             throw new Error(data.error || "Failed to generate recipe");
           }
@@ -76,7 +81,14 @@ export class RecipeService {
       }
 
       // Fallback to template-based generation
-      return await this.generateRecipeFromTemplates(cuisines, ingredients);
+      const recipe = await this.generateRecipeFromTemplates(
+        cuisines,
+        ingredients
+      );
+      return {
+        recipe,
+        cached: false,
+      };
     } catch (error) {
       if (error instanceof RecipeGenerationError) {
         throw error;

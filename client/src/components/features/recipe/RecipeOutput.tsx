@@ -11,17 +11,47 @@ import {
   Share2,
   Heart,
   ArrowLeft,
+  RefreshCw,
 } from "lucide-react";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { Recipe } from "@/types";
 import { formatTime, calculateTotalTime } from "@/utils/format";
+import { APIService } from "@/services/api-service";
+import { useState } from "react";
 
 interface RecipeOutputProps {
   recipe: Recipe;
+  isCached?: boolean;
   onStartOver: () => void;
+  onRegenerate?: () => void;
 }
 
-export function RecipeOutput({ recipe, onStartOver }: RecipeOutputProps) {
+export function RecipeOutput({
+  recipe,
+  isCached = false,
+  onStartOver,
+  onRegenerate,
+}: RecipeOutputProps) {
+  const [printing, setPrinting] = useState(false);
+
+  const handlePrint = async () => {
+    if (!recipe._id) {
+      console.error("Recipe has no ID");
+      return;
+    }
+
+    try {
+      setPrinting(true);
+      await APIService.printRecipe(recipe._id);
+    } catch (error) {
+      console.error("Error printing recipe:", error);
+      // Fallback to browser print
+      window.print();
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   return (
     <div className="py-12 md:py-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -53,6 +83,14 @@ export function RecipeOutput({ recipe, onStartOver }: RecipeOutputProps) {
                 <Badge className="bg-accent-lighter text-accent">
                   AI Generated
                 </Badge>
+                {isCached && (
+                  <Badge
+                    variant="outline"
+                    className="border-blue-300 text-blue-600"
+                  >
+                    From Cache
+                  </Badge>
+                )}
               </div>
 
               <h1 className="text-3xl md:text-4xl mb-4">{recipe.name}</h1>
@@ -166,9 +204,23 @@ export function RecipeOutput({ recipe, onStartOver }: RecipeOutputProps) {
                 Create Another Recipe
               </Button>
               <div className="flex gap-3">
-                <Button variant="outline">
+                {isCached && onRegenerate && (
+                  <Button
+                    variant="outline"
+                    onClick={onRegenerate}
+                    className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Regenerate Recipe
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={handlePrint}
+                  disabled={printing}
+                >
                   <Printer className="mr-2 h-4 w-4" />
-                  Print Recipe
+                  {printing ? "Generating PDF..." : "Print Recipe"}
                 </Button>
                 <Button className="bg-primary hover:bg-primary-light">
                   <Heart className="mr-2 h-4 w-4" />

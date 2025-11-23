@@ -45,6 +45,7 @@ export interface Ingredient {
 export interface GenerateRecipeRequest {
   cuisines: string[];
   ingredients: string[];
+  forceRegenerate?: boolean;
 }
 
 export interface GenerateRecipeResponse {

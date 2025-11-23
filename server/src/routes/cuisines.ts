@@ -1,32 +1,49 @@
 import { Router, Request, Response } from "express";
-import { cuisines } from "../constants/cuisines";
+import { Cuisine } from "../models/Cuisine";
 
 const router: Router = Router();
 
 /**
  * GET /api/cuisines
- * Returns all available cuisines
+ * Returns all available cuisines from database
  */
-router.get("/", (_req: Request, res: Response) => {
-  res.json({ success: true, data: cuisines });
+router.get("/", async (_req: Request, res: Response) => {
+  try {
+    const cuisines = await Cuisine.find().sort({ name: 1 });
+    res.json({ success: true, data: cuisines });
+  } catch (error) {
+    console.error("Error fetching cuisines:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch cuisines",
+    });
+  }
 });
 
 /**
  * GET /api/cuisines/:id
- * Returns a specific cuisine by ID
+ * Returns a specific cuisine by ID from database
  */
-router.get("/:id", (req: Request, res: Response) => {
-  const { id } = req.params;
-  const cuisine = cuisines.find((c) => c.id === id);
+router.get("/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const cuisine = await Cuisine.findOne({ id });
 
-  if (!cuisine) {
-    return res.status(404).json({
+    if (!cuisine) {
+      return res.status(404).json({
+        success: false,
+        error: `Cuisine with ID '${id}' not found`,
+      });
+    }
+
+    res.json({ success: true, data: cuisine });
+  } catch (error) {
+    console.error("Error fetching cuisine:", error);
+    res.status(500).json({
       success: false,
-      error: `Cuisine with ID '${id}' not found`,
+      error: "Failed to fetch cuisine",
     });
   }
-
-  res.json({ success: true, data: cuisine });
 });
 
 export default router;

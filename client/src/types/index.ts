@@ -6,6 +6,7 @@ export type Screen =
   | "recipe";
 
 export interface Recipe {
+  _id?: string; // MongoDB document ID
   name: string;
   description: string;
   cuisine: string;
