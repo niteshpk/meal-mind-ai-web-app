@@ -5,12 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { Ingredient } from "@/types";
+import { DietaryRestriction } from "@/types/dietary";
 import { APIService } from "@/services/api-service";
+import { DietaryFilters } from "@/components/DietaryFilters";
+import { filterIngredientsByDietary } from "@/utils/dietary";
 
 interface IngredientSelectionProps {
   selectedCuisines: string[];
   selectedIngredients: string[];
+  dietaryRestrictions: DietaryRestriction[];
   onToggleIngredient: (ingredientId: string) => void;
+  onDietaryRestrictionsChange: (restrictions: DietaryRestriction[]) => void;
   onNext: () => void;
   onBack: () => void;
   onViewRecipes?: () => void;
@@ -19,7 +24,9 @@ interface IngredientSelectionProps {
 export function IngredientSelection({
   selectedCuisines,
   selectedIngredients,
+  dietaryRestrictions,
   onToggleIngredient,
+  onDietaryRestrictionsChange,
   onNext,
   onBack,
   onViewRecipes,
@@ -72,9 +79,13 @@ export function IngredientSelection({
   }, [selectedCuisines]);
 
   // Filter ingredients based on relevance (already filtered by cuisine from API)
+  // and dietary restrictions
   const relevantIngredients = useMemo(() => {
-    return allIngredients;
-  }, [allIngredients]);
+    if (dietaryRestrictions.length === 0) {
+      return allIngredients;
+    }
+    return filterIngredientsByDietary(allIngredients, dietaryRestrictions);
+  }, [allIngredients, dietaryRestrictions]);
 
   // Group ingredients by category
   const groupedIngredients = useMemo(() => {
@@ -176,6 +187,14 @@ export function IngredientSelection({
           </p>
         </div>
 
+        {/* Dietary Filters */}
+        <div className="max-w-4xl mx-auto mb-6">
+          <DietaryFilters
+            restrictions={dietaryRestrictions}
+            onChange={onDietaryRestrictionsChange}
+          />
+        </div>
+
         {/* Selected Counter */}
         <div className="max-w-4xl mx-auto mb-8 flex items-center justify-center gap-4 flex-wrap">
           <div className="bg-accent-lighter border-accent-light border px-4 py-2 rounded-full">
@@ -185,6 +204,13 @@ export function IngredientSelection({
               selected
             </span>
           </div>
+          {dietaryRestrictions.length > 0 && (
+            <div className="bg-blue-50 border-blue-200 border px-4 py-2 rounded-full">
+              <span className="text-sm text-blue-600">
+                {dietaryRestrictions.length} dietary filter{dietaryRestrictions.length > 1 ? "s" : ""} active
+              </span>
+            </div>
+          )}
           {selectedIngredients.length > 0 && onViewRecipes && (
             <Button
               variant="outline"

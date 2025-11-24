@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +11,17 @@ import {
   Heart,
   ArrowLeft,
   RefreshCw,
+  ShoppingCart,
 } from "lucide-react";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { Recipe } from "@/types";
 import { formatTime, calculateTotalTime } from "@/utils/format";
 import { APIService } from "@/services/api-service";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Slider } from "@/components/ui/slider";
+import { scaleRecipe } from "@/utils/scaling";
+import { ShoppingList } from "@/components/ShoppingList";
+import { recipeToShoppingList } from "@/utils/shopping";
 
 interface RecipeOutputProps {
   recipe: Recipe;
@@ -33,6 +37,18 @@ export function RecipeOutput({
   onRegenerate,
 }: RecipeOutputProps) {
   const [printing, setPrinting] = useState(false);
+  const [currentServings, setCurrentServings] = useState(recipe.servings);
+  const [scaledRecipe, setScaledRecipe] = useState<Recipe>(recipe);
+  const [showShoppingList, setShowShoppingList] = useState(false);
+
+  // Update scaled recipe when servings change
+  useEffect(() => {
+    if (currentServings !== recipe.servings) {
+      setScaledRecipe(scaleRecipe(recipe, currentServings));
+    } else {
+      setScaledRecipe(recipe);
+    }
+  }, [currentServings, recipe]);
 
   const handlePrint = async () => {
     if (!recipe._id) {
@@ -99,7 +115,7 @@ export function RecipeOutput({
               </p>
 
               {/* Quick Info */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <Clock className="h-5 w-5 text-primary" />
                   <div>
@@ -114,21 +130,57 @@ export function RecipeOutput({
                     <div className="text-sm">{formatTime(recipe.cookTime)}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                  <Users className="h-5 w-5 text-primary" />
-                  <div>
-                    <div className="text-xs text-muted-foreground">
-                      Servings
-                    </div>
-                    <div className="text-sm">{recipe.servings}</div>
-                  </div>
-                </div>
+
                 <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <Clock className="h-5 w-5 text-accent" />
                   <div>
                     <div className="text-xs text-muted-foreground">Total</div>
                     <div className="text-sm">
                       {calculateTotalTime(recipe.prepTime, recipe.cookTime)} min
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg md:col-span-3">
+                  <Users className="h-5 w-5 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-muted-foreground mb-3">
+                      Servings
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-muted-foreground min-w-[2rem]">
+                        {currentServings}
+                      </span>
+                      <div className="flex-1 min-w-0 px-2">
+                        <Slider
+                          value={[currentServings]}
+                          onValueChange={(value) =>
+                            setCurrentServings(value[0])
+                          }
+                          min={1}
+                          max={12}
+                          step={1}
+                          className="w-full"
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-muted-foreground min-w-[2rem] text-right">
+                        12
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] text-muted-foreground"></span>
+                      <span className="text-xs font-semibold text-primary">
+                        {currentServings}{" "}
+                        {currentServings === 1 ? "serving" : "servings"}
+                      </span>
+                      {currentServings !== recipe.servings && (
+                        <button
+                          onClick={() => setCurrentServings(recipe.servings)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Reset to {recipe.servings}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -141,11 +193,11 @@ export function RecipeOutput({
         <div className="max-w-4xl mx-auto grid md:grid-cols-3 gap-8 mb-12">
           {/* Ingredients */}
           <div className="md:col-span-1">
-            <Card className="p-6 sticky top-24">
-              <h2 className="text-xl mb-4">Ingredients</h2>
+            <Card className="p-6 sticky top-24 gap-2">
+              <h2 className="text-xl ">Ingredients</h2>
               <Separator className="mb-4" />
               <ul className="space-y-3">
-                {recipe.ingredients.map((ingredient, index) => (
+                {scaledRecipe.ingredients.map((ingredient, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <div className="mt-1.5 h-2 w-2 rounded-full bg-primary flex-shrink-0" />
                     <span className="text-sm flex-1">
@@ -160,8 +212,8 @@ export function RecipeOutput({
 
           {/* Instructions */}
           <div className="md:col-span-2 space-y-8">
-            <Card className="p-6">
-              <h2 className="text-xl mb-4">Instructions</h2>
+            <Card className="p-6  gap-2">
+              <h2 className="text-xl ">Instructions</h2>
               <Separator className="mb-6" />
               <ol className="space-y-6">
                 {recipe.instructions.map((instruction, index) => (
@@ -195,6 +247,16 @@ export function RecipeOutput({
           </div>
         </div>
 
+        {/* Shopping List */}
+        {showShoppingList && (
+          <div className="max-w-4xl mx-auto mb-12">
+            <ShoppingList
+              items={recipeToShoppingList(scaledRecipe)}
+              recipeName={scaledRecipe.name}
+            />
+          </div>
+        )}
+
         {/* Actions */}
         <div className="max-w-4xl mx-auto">
           <Card className="p-6">
@@ -214,6 +276,13 @@ export function RecipeOutput({
                     Regenerate Recipe
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={() => setShowShoppingList(!showShoppingList)}
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  {showShoppingList ? "Hide" : "Show"} Shopping List
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handlePrint}

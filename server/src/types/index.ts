@@ -46,6 +46,7 @@ export interface GenerateRecipeRequest {
   cuisines: string[];
   ingredients: string[];
   forceRegenerate?: boolean;
+  dietaryRestrictions?: string[];
 }
 
 export interface GenerateRecipeResponse {

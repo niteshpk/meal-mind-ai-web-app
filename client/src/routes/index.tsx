@@ -18,10 +18,12 @@ function AppRoutes() {
   const {
     selectedCuisines,
     selectedIngredients,
+    dietaryRestrictions,
     recipe,
     isCached,
     toggleCuisine,
     toggleIngredient,
+    setDietaryRestrictions,
     generateRecipe,
     regenerateRecipe,
     reset,
@@ -67,7 +69,9 @@ function AppRoutes() {
               <IngredientSelection
                 selectedCuisines={selectedCuisines}
                 selectedIngredients={selectedIngredients}
+                dietaryRestrictions={dietaryRestrictions}
                 onToggleIngredient={toggleIngredient}
+                onDietaryRestrictionsChange={setDietaryRestrictions}
                 onNext={async () => {
                   navigate("/loading");
                   await generateRecipe();

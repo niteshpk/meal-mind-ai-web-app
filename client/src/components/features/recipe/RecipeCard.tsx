@@ -52,7 +52,7 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
         </div>
       </div>
 
-      <div className="mt-4 pt-4 border-t">
+      <div className="pt-4 border-t">
         <p className="text-xs text-muted-foreground">
           {recipe.ingredients.length} ingredients •{" "}
           {calculateTotalTime(recipe.prepTime, recipe.cookTime)} min total
@@ -61,4 +61,3 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
     </Card>
   );
 }
-

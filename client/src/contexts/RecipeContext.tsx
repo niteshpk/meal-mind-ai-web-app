@@ -1,17 +1,20 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { Screen, Recipe } from "@/types";
+import { DietaryRestriction } from "@/types/dietary";
 import { RecipeService } from "@/services/recipe-service";
 
 interface RecipeContextType {
   currentScreen: Screen;
   selectedCuisines: string[];
   selectedIngredients: string[];
+  dietaryRestrictions: DietaryRestriction[];
   recipe: Recipe | null;
   isCached: boolean;
   setCurrentScreen: (screen: Screen) => void;
   setRecipe: (recipe: Recipe | null) => void;
   toggleCuisine: (cuisineId: string) => void;
   toggleIngredient: (ingredientId: string) => void;
+  setDietaryRestrictions: (restrictions: DietaryRestriction[]) => void;
   generateRecipe: (forceRegenerate?: boolean) => Promise<void>;
   regenerateRecipe: () => Promise<void>;
   reset: () => void;
@@ -23,6 +26,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
   const [currentScreen, setCurrentScreen] = useState<Screen>("landing");
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<DietaryRestriction[]>([]);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isCached, setIsCached] = useState<boolean>(false);
 
@@ -51,7 +55,8 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
       selectedCuisines,
       selectedIngredients,
       true,
-      forceRegenerate
+      forceRegenerate,
+      dietaryRestrictions
     );
     setRecipe(result.recipe);
     setIsCached(result.cached);
@@ -68,6 +73,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     setCurrentScreen("landing");
     setSelectedCuisines([]);
     setSelectedIngredients([]);
+    setDietaryRestrictions([]);
     setRecipe(null);
     setIsCached(false);
   };
@@ -78,12 +84,14 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
         currentScreen,
         selectedCuisines,
         selectedIngredients,
+        dietaryRestrictions,
         recipe,
         isCached,
         setCurrentScreen,
         setRecipe,
         toggleCuisine,
         toggleIngredient,
+        setDietaryRestrictions,
         generateRecipe,
         regenerateRecipe,
         reset,

@@ -1,5 +1,6 @@
 import { Recipe } from "@/types";
 import { RecipeGenerationError } from "@/types/errors";
+import { DietaryRestriction } from "@/types/dietary";
 import { config } from "@/config";
 import { APIService } from "./api-service";
 
@@ -18,6 +19,7 @@ export class RecipeService {
    * @param ingredients - Array of selected ingredient IDs
    * @param useAI - Whether to use AI generation (default: true)
    * @param forceRegenerate - Force regenerate even if cached recipe exists (default: false)
+   * @param dietaryRestrictions - Array of dietary restrictions (default: [])
    * @returns Promise resolving to a Recipe object and cached status
    * @throws RecipeGenerationError if generation fails
    */
@@ -25,7 +27,8 @@ export class RecipeService {
     cuisines: string[],
     ingredients: string[],
     useAI: boolean = true,
-    forceRegenerate: boolean = false
+    forceRegenerate: boolean = false,
+    dietaryRestrictions: DietaryRestriction[] = []
   ): Promise<{ recipe: Recipe; cached: boolean }> {
     try {
       if (cuisines.length === 0) {
@@ -50,7 +53,12 @@ export class RecipeService {
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ cuisines, ingredients, forceRegenerate }),
+              body: JSON.stringify({ 
+                cuisines, 
+                ingredients, 
+                forceRegenerate,
+                dietaryRestrictions 
+              }),
             }
           );
 

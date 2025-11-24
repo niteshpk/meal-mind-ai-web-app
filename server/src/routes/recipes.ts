@@ -26,7 +26,7 @@ router.post("/generate", async (req: Request, res: Response) => {
       });
     }
 
-    const { cuisines, ingredients, forceRegenerate }: GenerateRecipeRequest & { forceRegenerate?: boolean } = req.body;
+    const { cuisines, ingredients, forceRegenerate, dietaryRestrictions }: GenerateRecipeRequest & { forceRegenerate?: boolean; dietaryRestrictions?: string[] } = req.body;
 
     // Validate request
     if (!cuisines || !Array.isArray(cuisines) || cuisines.length === 0) {
@@ -96,7 +96,8 @@ router.post("/generate", async (req: Request, res: Response) => {
       cuisines,
       ingredients,
       model,
-      avoidSimilarTo.length > 0 ? avoidSimilarTo : undefined
+      avoidSimilarTo.length > 0 ? avoidSimilarTo : undefined,
+      dietaryRestrictions
     );
 
     // Save recipe to database

@@ -248,7 +248,8 @@ export class AIService {
   private createRecipePrompt(
     cuisines: string[],
     ingredients: string[],
-    avoidSimilarTo?: string[]
+    avoidSimilarTo?: string[],
+    dietaryRestrictions?: string[]
   ): string {
     const cuisineText =
       cuisines.length === 1
@@ -261,7 +262,15 @@ export class AIService {
       uniquenessNote = `\n\nCRITICAL: Generate a COMPLETELY DIFFERENT and UNIQUE recipe. Avoid creating recipes similar to these existing ones: ${avoidSimilarTo.join(", ")}. Create a new variation with a different name, different cooking method, and different flavor profile.`;
     }
 
-    return `Create a detailed recipe for a ${cuisineText} dish using the following ingredients: ${ingredientsText}.${uniquenessNote}
+    let dietaryNote = "";
+    if (dietaryRestrictions && dietaryRestrictions.length > 0) {
+      const restrictionsText = dietaryRestrictions
+        .map((r) => r.replace("-", " ").replace(/\b\w/g, (l) => l.toUpperCase()))
+        .join(", ");
+      dietaryNote = `\n\nIMPORTANT: This recipe must be ${restrictionsText}. Ensure all ingredients and cooking methods comply with these dietary restrictions. Do not use any ingredients that violate these restrictions.`;
+    }
+
+    return `Create a detailed recipe for a ${cuisineText} dish using the following ingredients: ${ingredientsText}.${uniquenessNote}${dietaryNote}
 
 Please provide a complete recipe in TOON format (Token-Oriented Object Notation) with the following flattened structure:
 name: Recipe name
@@ -305,12 +314,14 @@ Important:
    * @param ingredients - Array of ingredient IDs
    * @param model - OpenAI model to use
    * @param avoidSimilarTo - Array of recipe names to avoid (for uniqueness)
+   * @param dietaryRestrictions - Array of dietary restrictions to apply
    */
   async generateRecipe(
     cuisines: string[],
     ingredients: string[],
     model: string = "gpt-4o-mini",
-    avoidSimilarTo?: string[]
+    avoidSimilarTo?: string[],
+    dietaryRestrictions?: string[]
   ): Promise<Recipe> {
     // Validate inputs
     if (cuisines.length === 0) {
@@ -329,7 +340,8 @@ Important:
       const prompt = this.createRecipePrompt(
         cuisineNames,
         ingredientNames,
-        avoidSimilarTo
+        avoidSimilarTo,
+        dietaryRestrictions
       );
 
     // Call OpenAI API
