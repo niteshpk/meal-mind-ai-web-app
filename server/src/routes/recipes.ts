@@ -3,6 +3,8 @@ import { AIService } from "../services/ai-service";
 import { GenerateRecipeRequest, Recipe as RecipeType } from "../types";
 import { Recipe } from "../models/Recipe";
 import { PDFService } from "../services/pdf-service";
+import { optionalAuth, AuthRequest } from "../middleware/auth";
+import { User } from "../models/User";
 
 const router: Router = Router();
 
@@ -270,8 +272,9 @@ router.get("/:id/print", async (req: Request, res: Response) => {
 /**
  * GET /api/recipes/:id
  * Get a specific recipe by ID
+ * Tracks recipe view in user history if authenticated
  */
-router.get("/:id", async (req: Request, res: Response) => {
+router.get("/:id", optionalAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const recipe = await Recipe.findById(id);
@@ -281,6 +284,41 @@ router.get("/:id", async (req: Request, res: Response) => {
         success: false,
         error: `Recipe with ID '${id}' not found`,
       });
+    }
+
+    // Track in user history if authenticated (using atomic operations to avoid version conflicts)
+    if (req.user) {
+      try {
+        // Remove old entry if exists using atomic $pull
+        await User.updateOne(
+          { _id: req.user.id },
+          {
+            $pull: {
+              recipeHistory: { recipeId: id }
+            }
+          }
+        );
+
+        // Add new entry at the beginning and limit to 100 using atomic $push
+        await User.updateOne(
+          { _id: req.user.id },
+          {
+            $push: {
+              recipeHistory: {
+                $each: [{
+                  recipeId: recipe._id,
+                  viewedAt: new Date(),
+                }],
+                $position: 0,
+                $slice: 100
+              }
+            }
+          }
+        );
+      } catch (historyError) {
+        // Don't fail the request if history tracking fails
+        console.error("Error tracking recipe history:", historyError);
+      }
     }
 
     res.json({ success: true, data: recipe });

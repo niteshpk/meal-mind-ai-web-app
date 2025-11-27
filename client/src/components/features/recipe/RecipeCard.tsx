@@ -10,6 +10,11 @@ interface RecipeCardProps {
 }
 
 export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
+  // Safety check - ensure recipe has required fields
+  if (!recipe || !recipe.name) {
+    return null;
+  }
+
   return (
     <Card
       className="p-6 cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col"
@@ -17,45 +22,55 @@ export function RecipeCard({ recipe, onClick }: RecipeCardProps) {
     >
       <div className="flex-1">
         <div className="flex flex-wrap gap-2 mb-3">
-          <Badge className="bg-primary text-primary-foreground text-xs">
-            {recipe.cuisine}
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-            {recipe.difficulty}
-          </Badge>
+          {recipe.cuisine && (
+            <Badge className="bg-primary text-primary-foreground text-xs">
+              {recipe.cuisine}
+            </Badge>
+          )}
+          {recipe.difficulty && (
+            <Badge variant="outline" className="text-xs">
+              {recipe.difficulty}
+            </Badge>
+          )}
         </div>
 
         <h3 className="text-xl font-semibold mb-2 line-clamp-2">
           {recipe.name}
         </h3>
-        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-          {recipe.description}
-        </p>
+        {recipe.description && (
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+            {recipe.description}
+          </p>
+        )}
 
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3 text-primary" />
             <span className="text-muted-foreground">
-              {formatTime(recipe.prepTime)}
+              {recipe.prepTime ? formatTime(recipe.prepTime) : "N/A"}
             </span>
           </div>
           <div className="flex items-center gap-1">
             <ChefHat className="h-3 w-3 text-accent" />
             <span className="text-muted-foreground">
-              {formatTime(recipe.cookTime)}
+              {recipe.cookTime ? formatTime(recipe.cookTime) : "N/A"}
             </span>
           </div>
           <div className="flex items-center gap-1">
             <Users className="h-3 w-3 text-primary" />
-            <span className="text-muted-foreground">{recipe.servings}</span>
+            <span className="text-muted-foreground">
+              {recipe.servings || "N/A"}
+            </span>
           </div>
         </div>
       </div>
 
       <div className="pt-4 border-t">
         <p className="text-xs text-muted-foreground">
-          {recipe.ingredients.length} ingredients •{" "}
-          {calculateTotalTime(recipe.prepTime, recipe.cookTime)} min total
+          {recipe.ingredients?.length || 0} ingredients
+          {recipe.prepTime && recipe.cookTime && (
+            <> • {calculateTotalTime(recipe.prepTime, recipe.cookTime)} min total</>
+          )}
         </p>
       </div>
     </Card>

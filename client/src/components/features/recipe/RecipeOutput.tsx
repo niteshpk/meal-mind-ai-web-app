@@ -22,6 +22,9 @@ import { Slider } from "@/components/ui/slider";
 import { scaleRecipe } from "@/utils/scaling";
 import { ShoppingList } from "@/components/ShoppingList";
 import { recipeToShoppingList } from "@/utils/shopping";
+import { useAuth } from "@/contexts/AuthContext";
+import { FavoritesService } from "@/services/favorites-service";
+import { HistoryService } from "@/services/history-service";
 
 interface RecipeOutputProps {
   recipe: Recipe;
@@ -36,10 +39,13 @@ export function RecipeOutput({
   onStartOver,
   onRegenerate,
 }: RecipeOutputProps) {
+  const { isAuthenticated } = useAuth();
   const [printing, setPrinting] = useState(false);
   const [currentServings, setCurrentServings] = useState(recipe.servings);
   const [scaledRecipe, setScaledRecipe] = useState<Recipe>(recipe);
   const [showShoppingList, setShowShoppingList] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   // Update scaled recipe when servings change
   useEffect(() => {
@@ -49,6 +55,42 @@ export function RecipeOutput({
       setScaledRecipe(recipe);
     }
   }, [currentServings, recipe]);
+
+  // Check if recipe is favorited and track in history
+  useEffect(() => {
+    if (isAuthenticated && recipe._id) {
+      // Check favorite status
+      FavoritesService.checkFavorite(recipe._id)
+        .then(setIsFavorite)
+        .catch(() => setIsFavorite(false));
+
+      // Track in history
+      HistoryService.addToHistory(recipe._id).catch(() => {
+        // Silently fail - history tracking is optional
+      });
+    }
+  }, [isAuthenticated, recipe._id]);
+
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated || !recipe._id) {
+      return;
+    }
+
+    setFavoriteLoading(true);
+    try {
+      if (isFavorite) {
+        await FavoritesService.removeFavorite(recipe._id);
+        setIsFavorite(false);
+      } else {
+        await FavoritesService.addFavorite(recipe._id);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
 
   const handlePrint = async () => {
     if (!recipe._id) {
@@ -291,10 +333,34 @@ export function RecipeOutput({
                   <Printer className="mr-2 h-4 w-4" />
                   {printing ? "Generating PDF..." : "Print Recipe"}
                 </Button>
-                <Button className="bg-primary hover:bg-primary-light">
-                  <Heart className="mr-2 h-4 w-4" />
-                  Save to Favorites
-                </Button>
+                {isAuthenticated ? (
+                  <Button
+                    onClick={handleToggleFavorite}
+                    disabled={favoriteLoading}
+                    variant={isFavorite ? "default" : "outline"}
+                    className={isFavorite ? "bg-primary hover:bg-primary-light" : ""}
+                  >
+                    <Heart
+                      className={`mr-2 h-4 w-4 ${isFavorite ? "fill-current" : ""}`}
+                    />
+                    {favoriteLoading
+                      ? "Loading..."
+                      : isFavorite
+                        ? "Saved"
+                        : "Save to Favorites"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Trigger login dialog - will be handled by Header
+                      window.dispatchEvent(new CustomEvent("openLogin"));
+                    }}
+                  >
+                    <Heart className="mr-2 h-4 w-4" />
+                    Sign in to Save
+                  </Button>
+                )}
               </div>
             </div>
           </Card>

@@ -8,6 +8,8 @@ import { IngredientSelection } from "@/components/features/selection/IngredientS
 import { AILoading } from "@/components/AILoading";
 import { RecipeOutput } from "@/components/features/recipe/RecipeOutput";
 import { RecipeList } from "@/components/features/recipe/RecipeList";
+import { FavoritesPage } from "@/components/features/favorites/FavoritesPage";
+import { HistoryPage } from "@/components/features/history/HistoryPage";
 import { useRecipe } from "@/contexts/RecipeContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -148,6 +150,8 @@ function AppRoutes() {
               )
             }
           />
+          <Route path="/favorites" element={<FavoritesPage />} />
+          <Route path="/history" element={<HistoryPage />} />
         </Routes>
       </main>
 

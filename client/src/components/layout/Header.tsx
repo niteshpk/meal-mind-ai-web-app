@@ -1,12 +1,45 @@
-import React from "react";
-import { ChefHat } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ChefHat, User, LogOut, Heart, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LoginDialog } from "@/components/auth/LoginDialog";
+import { RegisterDialog } from "@/components/auth/RegisterDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function Header() {
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+
+  const handleAuthSuccess = () => {
+    setShowLogin(false);
+    setShowRegister(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
             <div className="rounded-xl bg-primary p-2">
               <ChefHat className="h-6 w-6 text-primary-foreground" />
             </div>
@@ -18,26 +51,97 @@ export function Header() {
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6">
-            <a
-              href="#"
-              className="text-sm hover:text-primary transition-colors"
-            >
-              How It Works
-            </a>
-            <a
-              href="#"
-              className="text-sm hover:text-primary transition-colors"
-            >
-              About
-            </a>
-            <a
-              href="#"
-              className="text-sm hover:text-primary transition-colors"
-            >
-              Contact
-            </a>
-          </nav>
+          <div className="flex items-center gap-4">
+            {isAuthenticated ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/favorites")}
+                  className="hidden sm:flex"
+                >
+                  <Heart className="mr-2 h-4 w-4" />
+                  Favorites
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/history")}
+                  className="hidden sm:flex"
+                >
+                  <History className="mr-2 h-4 w-4" />
+                  History
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <User className="h-4 w-4" />
+                      <span className="hidden sm:inline">
+                        {user?.name || user?.email?.split("@")[0]}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => navigate("/favorites")}>
+                      <Heart className="mr-2 h-4 w-4" />
+                      My Favorites
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/history")}>
+                      <History className="mr-2 h-4 w-4" />
+                      Recipe History
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Dialog open={showLogin || showRegister} onOpenChange={(open) => {
+                if (!open) {
+                  setShowLogin(false);
+                  setShowRegister(false);
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAuthMode("login");
+                      setShowLogin(true);
+                    }}
+                  >
+                    <User className="mr-2 h-4 w-4" />
+                    Login
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  {authMode === "login" ? (
+                    <LoginDialog
+                      onSuccess={handleAuthSuccess}
+                      onSwitchToRegister={() => {
+                        setShowLogin(false);
+                        setShowRegister(true);
+                        setAuthMode("register");
+                      }}
+                    />
+                  ) : (
+                    <RegisterDialog
+                      onSuccess={handleAuthSuccess}
+                      onSwitchToLogin={() => {
+                        setShowRegister(false);
+                        setShowLogin(true);
+                        setAuthMode("login");
+                      }}
+                    />
+                  )}
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
       </div>
     </header>

@@ -5,6 +5,9 @@ import cuisinesRoutes from "./routes/cuisines";
 import ingredientsRoutes from "./routes/ingredients";
 import recipeTemplatesRoutes from "./routes/recipe-templates";
 import recipesRoutes, { setAIService } from "./routes/recipes";
+import authRoutes from "./routes/auth";
+import favoritesRoutes from "./routes/favorites";
+import historyRoutes from "./routes/history";
 import { AIService } from "./services/ai-service";
 import { connectDB } from "./db/connection";
 
@@ -28,6 +31,9 @@ app.use("/api/cuisines", cuisinesRoutes);
 app.use("/api/ingredients", ingredientsRoutes);
 app.use("/api/recipe-templates", recipeTemplatesRoutes);
 app.use("/api/recipes", recipesRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/favorites", favoritesRoutes);
+app.use("/api/history", historyRoutes);
 
 /**
  * Initialize server - connects to database and starts listening
