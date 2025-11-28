@@ -12,6 +12,7 @@ interface CuisineSelectionProps {
   onToggleCuisine: (cuisineId: string) => void;
   onNext: () => void;
   onBack: () => void;
+  onMount?: () => void;
 }
 
 export function CuisineSelection({
@@ -19,10 +20,15 @@ export function CuisineSelection({
   onToggleCuisine,
   onNext,
   onBack,
+  onMount,
 }: CuisineSelectionProps) {
   const [cuisines, setCuisines] = useState<Cuisine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    onMount?.();
+  }, [onMount]);
 
   useEffect(() => {
     const fetchCuisines = async () => {

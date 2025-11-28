@@ -42,7 +42,7 @@ export function LoginDialog({
       <DialogDescription className="sr-only">
         Sign in to save your favorite recipes
       </DialogDescription>
-      <Card className="w-full max-w-md mx-auto bg-white border-none">
+      <Card className="w-full max-w-md mx-auto border-none">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <p className="text-sm text-muted-foreground">

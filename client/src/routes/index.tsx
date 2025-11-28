@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -10,6 +10,12 @@ import { RecipeOutput } from "@/components/features/recipe/RecipeOutput";
 import { RecipeList } from "@/components/features/recipe/RecipeList";
 import { FavoritesPage } from "@/components/features/favorites/FavoritesPage";
 import { HistoryPage } from "@/components/features/history/HistoryPage";
+import { MealPlanningPage } from "@/components/features/meal-planning/MealPlanningPage";
+import { PopularRecipesPage } from "@/components/features/popular/PopularRecipesPage";
+import { RecipeByIdPage } from "@/components/features/recipe/RecipeByIdPage";
+import { CustomRecipesPage } from "@/components/features/custom-recipes/CustomRecipesPage";
+import { EditCustomRecipePage } from "@/components/features/custom-recipes/EditCustomRecipePage";
+import { UserPreferencesPage } from "@/components/features/preferences/UserPreferencesPage";
 import { useRecipe } from "@/contexts/RecipeContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +23,7 @@ import { ChefHat, ArrowLeft } from "lucide-react";
 
 function AppRoutes() {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     selectedCuisines,
     selectedIngredients,
@@ -30,19 +37,26 @@ function AppRoutes() {
     regenerateRecipe,
     reset,
     setRecipe,
+    setCurrentScreen,
   } = useRecipe();
+  
+  // Preserve mealPlanContext through navigation
+  const mealPlanContext = (location.state as { mealPlanContext?: { day: string; mealType: string; weekStartDate: string } } | null)?.mealPlanContext;
 
   const handleStartOver = () => {
     reset();
+    setCurrentScreen("cuisine");
     navigate("/cuisine");
   };
 
   // Navigate to recipe page when recipe is generated
   useEffect(() => {
     if (recipe && window.location.pathname === "/loading") {
-      navigate("/recipe");
+      navigate("/recipe", {
+        state: mealPlanContext ? { mealPlanContext } : undefined,
+      });
     }
-  }, [recipe, navigate]);
+  }, [recipe, navigate, mealPlanContext]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -52,7 +66,14 @@ function AppRoutes() {
         <Routes>
           <Route
             path="/"
-            element={<Landing onGetStarted={() => navigate("/cuisine")} />}
+            element={
+              <Landing
+                onGetStarted={() => {
+                  setCurrentScreen("cuisine");
+                  navigate("/cuisine");
+                }}
+              />
+            }
           />
           <Route
             path="/cuisine"
@@ -60,8 +81,15 @@ function AppRoutes() {
               <CuisineSelection
                 selectedCuisines={selectedCuisines}
                 onToggleCuisine={toggleCuisine}
-                onNext={() => navigate("/ingredients")}
-                onBack={() => navigate("/")}
+                onNext={() => {
+                  setCurrentScreen("ingredients");
+                  navigate("/ingredients");
+                }}
+                onBack={() => {
+                  setCurrentScreen("landing");
+                  navigate("/");
+                }}
+                onMount={() => setCurrentScreen("cuisine")}
               />
             }
           />
@@ -75,12 +103,18 @@ function AppRoutes() {
                 onToggleIngredient={toggleIngredient}
                 onDietaryRestrictionsChange={setDietaryRestrictions}
                 onNext={async () => {
-                  navigate("/loading");
+                  navigate("/loading", {
+                    state: mealPlanContext ? { mealPlanContext } : undefined,
+                  });
                   await generateRecipe();
                   // Navigation will happen automatically via useEffect when recipe is set
                 }}
-                onBack={() => navigate("/cuisine")}
-                onViewRecipes={() => navigate("/recipes")}
+                onBack={() => navigate("/cuisine", {
+                  state: mealPlanContext ? { mealPlanContext } : undefined,
+                })}
+                onViewRecipes={() => navigate("/recipes", {
+                  state: mealPlanContext ? { mealPlanContext } : undefined,
+                })}
               />
             }
           />
@@ -94,10 +128,14 @@ function AppRoutes() {
                     selectedIngredients={selectedIngredients}
                     onRecipeSelect={(recipe) => {
                       setRecipe(recipe);
-                      navigate("/recipe");
+                      navigate("/recipe", {
+                        state: mealPlanContext ? { mealPlanContext } : undefined,
+                      });
                     }}
                     onGenerateNew={async () => {
-                      navigate("/loading");
+                      navigate("/loading", {
+                        state: mealPlanContext ? { mealPlanContext } : undefined,
+                      });
                       await generateRecipe(true); // Force regenerate
                     }}
                   />
@@ -150,8 +188,15 @@ function AppRoutes() {
               )
             }
           />
-          <Route path="/favorites" element={<FavoritesPage />} />
-          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/recipe/:id" element={<RecipeByIdPage />} />
+                <Route path="/favorites" element={<FavoritesPage />} />
+                <Route path="/history" element={<HistoryPage />} />
+                <Route path="/meal-planning" element={<MealPlanningPage />} />
+                <Route path="/popular" element={<PopularRecipesPage />} />
+                <Route path="/custom-recipes" element={<CustomRecipesPage />} />
+                <Route path="/custom-recipes/create" element={<EditCustomRecipePage />} />
+                <Route path="/custom-recipes/edit" element={<EditCustomRecipePage />} />
+                <Route path="/preferences" element={<UserPreferencesPage />} />
         </Routes>
       </main>
 

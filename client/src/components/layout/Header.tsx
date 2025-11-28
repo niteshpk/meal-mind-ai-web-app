@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChefHat, User, LogOut, Heart, History } from "lucide-react";
+import { ChefHat, User, LogOut, Heart, History, Calendar, TrendingUp, Moon, Sun, FileEdit, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
@@ -52,6 +54,27 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/popular")}
+              className="hidden sm:flex"
+            >
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Popular
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="hidden sm:flex"
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
             {isAuthenticated ? (
               <>
                 <Button
@@ -72,6 +95,24 @@ export function Header() {
                   <History className="mr-2 h-4 w-4" />
                   History
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/meal-planning")}
+                  className="hidden sm:flex"
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Meal Plan
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/custom-recipes")}
+                  className="hidden sm:flex"
+                >
+                  <FileEdit className="mr-2 h-4 w-4" />
+                  Custom Recipes
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="gap-2">
@@ -82,6 +123,10 @@ export function Header() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => navigate("/popular")}>
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      Popular Recipes
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate("/favorites")}>
                       <Heart className="mr-2 h-4 w-4" />
                       My Favorites
@@ -89,6 +134,32 @@ export function Header() {
                     <DropdownMenuItem onClick={() => navigate("/history")}>
                       <History className="mr-2 h-4 w-4" />
                       Recipe History
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/meal-planning")}>
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Meal Planning
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/custom-recipes")}>
+                      <FileEdit className="mr-2 h-4 w-4" />
+                      Custom Recipes
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/preferences")}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Preferences
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                      {theme === "dark" ? (
+                        <>
+                          <Sun className="mr-2 h-4 w-4" />
+                          Light Mode
+                        </>
+                      ) : (
+                        <>
+                          <Moon className="mr-2 h-4 w-4" />
+                          Dark Mode
+                        </>
+                      )}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>

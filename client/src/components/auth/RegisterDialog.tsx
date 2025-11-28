@@ -55,7 +55,7 @@ export function RegisterDialog({
       <DialogDescription className="sr-only">
         Sign up to save your favorite recipes and access your history
       </DialogDescription>
-      <Card className="w-full max-w-md mx-auto bg-white border-none">
+      <Card className="w-full max-w-md mx-auto border-none">
         <CardHeader>
           <CardTitle className="text-2xl">Create Account</CardTitle>
           <p className="text-sm text-muted-foreground">

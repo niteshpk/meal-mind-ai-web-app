@@ -86,6 +86,40 @@ function scaleAmount(amount: string, scaleFactor: number): string {
 }
 
 /**
+ * Scale a time string (e.g., "15", "30")
+ * Times are stored as numeric strings representing minutes
+ * @param timeString - Time as a string (e.g., "15" for 15 minutes)
+ * @param scaleFactor - Factor to scale by
+ * @returns Scaled time as a string, rounded to nearest minute
+ */
+function scaleTime(timeString: string, scaleFactor: number): string {
+  if (!timeString || timeString.trim() === "") {
+    return timeString;
+  }
+  
+  // Extract numeric value from time string
+  // Handles formats like "15", "15 min", "15 minutes", etc.
+  const numericMatch = timeString.match(/(\d+(?:\.\d+)?)/);
+  if (!numericMatch) {
+    return timeString; // Return original if we can't parse
+  }
+  
+  const minutes = parseFloat(numericMatch[1]);
+  if (isNaN(minutes) || minutes <= 0) {
+    return timeString; // Return original if invalid
+  }
+  
+  // Scale the time proportionally
+  const scaledMinutes = minutes * scaleFactor;
+  
+  // Round to nearest minute (minimum 1 minute)
+  const roundedMinutes = Math.max(1, Math.round(scaledMinutes));
+  
+  // Return as string (without "min" suffix, as that's added by formatTime)
+  return roundedMinutes.toString();
+}
+
+/**
  * Scale a recipe to a new serving size
  */
 export function scaleRecipe(recipe: Recipe, newServings: number): Recipe {
@@ -98,6 +132,8 @@ export function scaleRecipe(recipe: Recipe, newServings: number): Recipe {
   return {
     ...recipe,
     servings: newServings,
+    prepTime: scaleTime(recipe.prepTime, scaleFactor),
+    cookTime: scaleTime(recipe.cookTime, scaleFactor),
     ingredients: recipe.ingredients.map((ing) => ({
       ...ing,
       amount: scaleAmount(ing.amount, scaleFactor),

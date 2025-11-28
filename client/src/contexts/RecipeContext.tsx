@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Screen, Recipe } from "@/types";
 import { DietaryRestriction } from "@/types/dietary";
 import { RecipeService } from "@/services/recipe-service";
+import { useAuth } from "./AuthContext";
 
 interface RecipeContextType {
   currentScreen: Screen;
@@ -23,12 +24,42 @@ interface RecipeContextType {
 const RecipeContext = createContext<RecipeContextType | undefined>(undefined);
 
 export function RecipeProvider({ children }: { children: ReactNode }) {
+  const { user, isAuthenticated } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<Screen>("landing");
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
   const [dietaryRestrictions, setDietaryRestrictions] = useState<DietaryRestriction[]>([]);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isCached, setIsCached] = useState<boolean>(false);
+
+  // Apply user preferences when user is authenticated and preferences are available
+  useEffect(() => {
+    if (isAuthenticated && user?.preferences) {
+      // Apply default dietary restrictions (only if not already set)
+      if (
+        user.preferences.defaultDietaryRestrictions?.length > 0 &&
+        dietaryRestrictions.length === 0
+      ) {
+        setDietaryRestrictions(
+          user.preferences.defaultDietaryRestrictions as DietaryRestriction[]
+        );
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.preferences?.defaultDietaryRestrictions]);
+
+  // Apply favorite cuisines when navigating to cuisine selection
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      user?.preferences?.favoriteCuisines?.length > 0 &&
+      currentScreen === "cuisine" &&
+      selectedCuisines.length === 0
+    ) {
+      setSelectedCuisines(user.preferences.favoriteCuisines);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.preferences?.favoriteCuisines, currentScreen]);
 
   // Handle cuisine toggle
   const toggleCuisine = (cuisineId: string) => {

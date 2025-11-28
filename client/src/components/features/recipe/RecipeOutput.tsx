@@ -7,11 +7,13 @@ import {
   Users,
   ChefHat,
   Printer,
-  Share2,
   Heart,
   ArrowLeft,
   RefreshCw,
   ShoppingCart,
+  FileEdit,
+  FileText,
+  Calendar,
 } from "lucide-react";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 import { Recipe } from "@/types";
@@ -25,6 +27,15 @@ import { recipeToShoppingList } from "@/utils/shopping";
 import { useAuth } from "@/contexts/AuthContext";
 import { FavoritesService } from "@/services/favorites-service";
 import { HistoryService } from "@/services/history-service";
+import { ReviewsSection } from "@/components/features/ratings/ReviewsSection";
+import { RecommendationsSection } from "@/components/features/recommendations/RecommendationsSection";
+import { SubstitutionSuggestions } from "@/components/features/substitutions/SubstitutionSuggestions";
+import { CookingTimer } from "@/components/features/timer/CookingTimer";
+import { RatingsService } from "@/services/ratings-service";
+import { ShareRecipe } from "./ShareRecipe";
+import { PDFService } from "@/services/pdf-service";
+import { toast } from "sonner";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface RecipeOutputProps {
   recipe: Recipe;
@@ -40,12 +51,33 @@ export function RecipeOutput({
   onRegenerate,
 }: RecipeOutputProps) {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [printing, setPrinting] = useState(false);
+
+  // Check if we're coming from meal planning
+  const mealPlanContext = (
+    location.state as {
+      mealPlanContext?: {
+        day: string;
+        mealType: string;
+        weekStartDate: string;
+      };
+    } | null
+  )?.mealPlanContext;
   const [currentServings, setCurrentServings] = useState(recipe.servings);
   const [scaledRecipe, setScaledRecipe] = useState<Recipe>(recipe);
   const [showShoppingList, setShowShoppingList] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [averageRating, setAverageRating] = useState(0);
+  const [ratingCount, setRatingCount] = useState(0);
+  const [showSubstitutions, setShowSubstitutions] = useState(false);
+  const [activeTimer, setActiveTimer] = useState<{
+    seconds: number;
+    label: string;
+  } | null>(null);
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   // Update scaled recipe when servings change
   useEffect(() => {
@@ -68,6 +100,16 @@ export function RecipeOutput({
       HistoryService.addToHistory(recipe._id).catch(() => {
         // Silently fail - history tracking is optional
       });
+
+      // Load ratings
+      RatingsService.getRatings(recipe._id)
+        .then((data) => {
+          setAverageRating(data.averageRating);
+          setRatingCount(data.ratingCount);
+        })
+        .catch(() => {
+          // Silently fail
+        });
     }
   }, [isAuthenticated, recipe._id]);
 
@@ -110,6 +152,39 @@ export function RecipeOutput({
     }
   };
 
+  const handleExportPDF = async () => {
+    if (!recipe._id) {
+      toast.error("Recipe ID is missing");
+      return;
+    }
+
+    try {
+      setExportingPDF(true);
+      await PDFService.exportRecipePDF(recipe._id);
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to export PDF"
+      );
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  const handleAddToMealPlan = () => {
+    if (!recipe._id || !mealPlanContext) return;
+
+    // Navigate back to meal planning with recipe ID
+    navigate("/meal-planning", {
+      state: {
+        recipeId: recipe._id,
+        day: mealPlanContext.day,
+        mealType: mealPlanContext.mealType,
+        weekStartDate: mealPlanContext.weekStartDate,
+      },
+    });
+  };
+
   return (
     <div className="py-12 md:py-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -123,12 +198,20 @@ export function RecipeOutput({
                 className="w-full h-64 md:h-80 object-cover"
               />
               <div className="absolute top-4 right-4 flex gap-2">
-                <Button size="sm" variant="secondary" className="rounded-full">
-                  <Heart className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="secondary" className="rounded-full">
-                  <Share2 className="h-4 w-4" />
-                </Button>
+                {isAuthenticated && recipe._id && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="rounded-full"
+                    onClick={handleToggleFavorite}
+                    disabled={favoriteLoading}
+                  >
+                    <Heart
+                      className={`h-4 w-4 ${isFavorite ? "fill-current" : ""}`}
+                    />
+                  </Button>
+                )}
+                {recipe._id && <ShareRecipe recipe={recipe} />}
               </div>
             </div>
 
@@ -162,14 +245,18 @@ export function RecipeOutput({
                   <Clock className="h-5 w-5 text-primary" />
                   <div>
                     <div className="text-xs text-muted-foreground">Prep</div>
-                    <div className="text-sm">{formatTime(recipe.prepTime)}</div>
+                    <div className="text-sm">
+                      {formatTime(scaledRecipe.prepTime)}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <ChefHat className="h-5 w-5 text-accent" />
                   <div>
                     <div className="text-xs text-muted-foreground">Cook</div>
-                    <div className="text-sm">{formatTime(recipe.cookTime)}</div>
+                    <div className="text-sm">
+                      {formatTime(scaledRecipe.cookTime)}
+                    </div>
                   </div>
                 </div>
 
@@ -178,7 +265,11 @@ export function RecipeOutput({
                   <div>
                     <div className="text-xs text-muted-foreground">Total</div>
                     <div className="text-sm">
-                      {calculateTotalTime(recipe.prepTime, recipe.cookTime)} min
+                      {calculateTotalTime(
+                        scaledRecipe.prepTime,
+                        scaledRecipe.cookTime
+                      )}{" "}
+                      min
                     </div>
                   </div>
                 </div>
@@ -289,6 +380,27 @@ export function RecipeOutput({
           </div>
         </div>
 
+        {/* Active Timer */}
+        {activeTimer && (
+          <div className="max-w-4xl mx-auto mb-8">
+            <CookingTimer
+              initialSeconds={activeTimer.seconds}
+              label={activeTimer.label}
+              onComplete={() => {
+                // Optional: Play sound or show notification
+                setTimeout(() => setActiveTimer(null), 5000);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Substitution Suggestions */}
+        {showSubstitutions && recipe._id && (
+          <div className="max-w-4xl mx-auto mb-8">
+            <SubstitutionSuggestions recipeId={recipe._id} />
+          </div>
+        )}
+
         {/* Shopping List */}
         {showShoppingList && (
           <div className="max-w-4xl mx-auto mb-12">
@@ -296,6 +408,24 @@ export function RecipeOutput({
               items={recipeToShoppingList(scaledRecipe)}
               recipeName={scaledRecipe.name}
             />
+          </div>
+        )}
+
+        {/* Ratings & Reviews */}
+        {recipe._id && (
+          <div className="max-w-4xl mx-auto mb-12">
+            <ReviewsSection
+              recipeId={recipe._id}
+              averageRating={averageRating}
+              ratingCount={ratingCount}
+            />
+          </div>
+        )}
+
+        {/* Recommendations */}
+        {recipe._id && (
+          <div className="max-w-4xl mx-auto mb-12">
+            <RecommendationsSection recipeId={recipe._id} type="similar" />
           </div>
         )}
 
@@ -327,27 +457,46 @@ export function RecipeOutput({
                 </Button>
                 <Button
                   variant="outline"
+                  onClick={() => setShowSubstitutions(!showSubstitutions)}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Substitutions
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleExportPDF}
+                  disabled={exportingPDF}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  {exportingPDF ? "Generating..." : "Export PDF"}
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={handlePrint}
                   disabled={printing}
                 >
                   <Printer className="mr-2 h-4 w-4" />
-                  {printing ? "Generating PDF..." : "Print Recipe"}
+                  {printing ? "Printing..." : "Print"}
                 </Button>
                 {isAuthenticated ? (
                   <Button
                     onClick={handleToggleFavorite}
                     disabled={favoriteLoading}
                     variant={isFavorite ? "default" : "outline"}
-                    className={isFavorite ? "bg-primary hover:bg-primary-light" : ""}
+                    className={
+                      isFavorite ? "bg-primary hover:bg-primary-light" : ""
+                    }
                   >
                     <Heart
-                      className={`mr-2 h-4 w-4 ${isFavorite ? "fill-current" : ""}`}
+                      className={`mr-2 h-4 w-4 ${
+                        isFavorite ? "fill-current" : ""
+                      }`}
                     />
                     {favoriteLoading
                       ? "Loading..."
                       : isFavorite
-                        ? "Saved"
-                        : "Save to Favorites"}
+                      ? "Saved"
+                      : "Save to Favorites"}
                   </Button>
                 ) : (
                   <Button
@@ -359,6 +508,26 @@ export function RecipeOutput({
                   >
                     <Heart className="mr-2 h-4 w-4" />
                     Sign in to Save
+                  </Button>
+                )}
+                {isAuthenticated && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      navigate("/custom-recipes/create", { state: { recipe } });
+                    }}
+                  >
+                    <FileEdit className="mr-2 h-4 w-4" />
+                    Create Custom Version
+                  </Button>
+                )}
+                {mealPlanContext && (
+                  <Button
+                    onClick={handleAddToMealPlan}
+                    className="bg-primary hover:bg-primary-light"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Add to Meal Plan
                   </Button>
                 )}
               </div>

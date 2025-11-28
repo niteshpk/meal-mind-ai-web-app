@@ -60,6 +60,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Load preferences when user logs in
+  useEffect(() => {
+    if (user && !user.preferences) {
+      // Preferences might not be loaded, refresh user to get them
+      refreshUser();
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider
       value={{

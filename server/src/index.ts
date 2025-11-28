@@ -8,6 +8,12 @@ import recipesRoutes, { setAIService } from "./routes/recipes";
 import authRoutes from "./routes/auth";
 import favoritesRoutes from "./routes/favorites";
 import historyRoutes from "./routes/history";
+import ratingsRoutes from "./routes/ratings";
+import recommendationsRoutes from "./routes/recommendations";
+import customRecipesRoutes from "./routes/custom-recipes";
+import mealPlansRoutes from "./routes/meal-plans";
+import substitutionsRoutes from "./routes/substitutions";
+import pdfRoutes from "./routes/pdf";
 import { AIService } from "./services/ai-service";
 import { connectDB } from "./db/connection";
 
@@ -34,6 +40,12 @@ app.use("/api/recipes", recipesRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/favorites", favoritesRoutes);
 app.use("/api/history", historyRoutes);
+app.use("/api/ratings", ratingsRoutes);
+app.use("/api/recommendations", recommendationsRoutes);
+app.use("/api/custom-recipes", customRecipesRoutes);
+app.use("/api/meal-plans", mealPlansRoutes);
+app.use("/api/substitutions", substitutionsRoutes);
+app.use("/api/pdf", pdfRoutes);
 
 /**
  * Initialize server - connects to database and starts listening
