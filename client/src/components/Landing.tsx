@@ -117,11 +117,11 @@ export function Landing({ onGetStarted }: LandingProps) {
                   className="p-6 hover:shadow-lg transition-shadow"
                 >
                   <div
-                    className={`inline-flex p-3 rounded-xl ${
+                    className={`flex justify-between items-center px-3 py-2 rounded-xl ${
                       item.color === "primary"
                         ? "bg-primary-lighter"
                         : "bg-accent-lighter"
-                    } mb-4`}
+                    }`}
                   >
                     <Icon
                       className={`h-6 w-6 ${
@@ -130,13 +130,15 @@ export function Landing({ onGetStarted }: LandingProps) {
                           : "text-accent"
                       }`}
                     />
-                  </div>
-                  <div
-                    className={`text-sm ${
-                      item.color === "primary" ? "text-primary" : "text-accent"
-                    } mb-2`}
-                  >
-                    Step {item.step}
+                    <div
+                      className={`text-sm ${
+                        item.color === "primary"
+                          ? "text-primary"
+                          : "text-accent"
+                      }`}
+                    >
+                      Step {item.step}
+                    </div>
                   </div>
                   <h3 className="mb-2">{item.title}</h3>
                   <p className="text-sm text-muted-foreground">
